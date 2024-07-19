@@ -1,0 +1,26 @@
+# Build artifacts
+*.mod
+*.sum
+bin/
+vendor/
+
+# IDE and editor related files
+.idea/
+.vscode/
+*.swo
+
+# Environment specific configuration (replace with your actual file name)
+config.yaml  # Or replace with your actual config file name
+
+# Temporary files
+*.tmp
+
+# Test coverage data
+coverage.out
+
+# Dependency lock files (managed by go mod)
+go.mod
+go.sum
+
+# Logs
+*.log

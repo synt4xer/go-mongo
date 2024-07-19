@@ -1,0 +1,17 @@
+# Go source code and build artifacts (built in the container)
+*.go
+*.mod
+go.sum
+
+# Configuration file (loaded from environment or volume)
+config.yaml  # Or replace with your actual config file name
+
+# Git related files
+.git/
+
+# Dependency management handled by go mod
+go.mod
+go.sum
+
+# Temporary files
+*.tmp
