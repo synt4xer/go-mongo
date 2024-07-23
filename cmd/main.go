@@ -37,7 +37,11 @@ func startServer(handlers *delivery.UserHandler) {
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 
+	router.Get("/api/v1/users", handlers.FindAll)
 	router.Post("/api/v1/users", handlers.SaveUser)
+	router.Get("/api/v1/users/{id}", handlers.FindById)
+	router.Patch("/api/v1/users/{id}", handlers.UpdateUser)
+	router.Delete("/api/v1/users/{id}", handlers.DeleteUser)
 
 	port := ":" + os.Getenv("PORT")
 

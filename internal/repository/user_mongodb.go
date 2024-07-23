@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/synt4xer/go-mongo/internal/domain"
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,36 +26,49 @@ func NewUserRepository(repo *MongoRepository) (*UserRepository, error) {
 	return &UserRepository{collection: col}, nil
 }
 
-func (r *UserRepository) Save(ctx context.Context, user *domain.User) error {
+func (r *UserRepository) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
+	now := time.Now().UTC()
+
 	user.ID = primitive.NewObjectID().Hex()
+	user.CreatedAt = &now
+	user.UpdatedAt = &now
+
 	data, err := bson.Marshal(user)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = r.collection.InsertOne(ctx, data)
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
-// func (r *userRepository) Update(ctx context.Context, id string, updates interface{}) error {
-func (r *UserRepository) Update(ctx context.Context, id string, user *domain.User) error {
-	data, err := bson.Marshal(user)
+func (r *UserRepository) Update(ctx context.Context, id string, user *domain.User) (*domain.User, error) {
+	now := time.Now().UTC()
 
-	if err != nil {
-		return err
-	}
+	user.UpdatedAt = &now
+
+	// no need to be marshal because mongo update gonna marshal it
+	// data, err := bson.Marshal(user)
+
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	filter := bson.M{"_id": bson.M{"$eq": id}}
-	update := bson.M{"$set": data}
+	update := bson.M{"$set": user}
 
-	updateResult := r.collection.FindOneAndUpdate(ctx, filter, update, options.FindOneAndUpdate().SetUpsert(true))
+	_, err := r.collection.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
 
-	if updateResult.Err() != nil {
-		return updateResult.Err()
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return user, nil
 }
 
 func (r *UserRepository) Delete(ctx context.Context, id string) error {

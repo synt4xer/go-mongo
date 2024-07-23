@@ -17,33 +17,31 @@ func ProvideUserUseCase(repo *repository.UserRepository) *UserUseCase {
 	return &UserUseCase{userRepository: repo, validator: validator.New()}
 }
 
-func (uc *UserUseCase) Save(ctx context.Context, user *domain.User) error {
+func (uc *UserUseCase) Save(ctx context.Context, user *domain.User) (*domain.User, error) {
 	if err := uc.validator.Struct(user); err != nil {
-		return err
+		return nil, err
 	}
 
 	return uc.userRepository.Save(ctx, user)
 }
 
-func (uc *UserUseCase) Update(ctx context.Context, id string, user *domain.User) error {
-	_, err := uc.userRepository.GetUserByID(ctx, id)
+func (uc *UserUseCase) Update(ctx context.Context, id string, user *domain.User) (*domain.User, error) {
+	savedUser, err := uc.userRepository.GetUserByID(ctx, id)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	if user.CreatedAt == nil {
+		user.CreatedAt = savedUser.CreatedAt
 	}
 
 	err = uc.validator.Struct(user)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = uc.userRepository.Update(ctx, id, user)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return uc.userRepository.Update(ctx, id, user)
 }
 
 func (uc *UserUseCase) Delete(ctx context.Context, id string) error {
