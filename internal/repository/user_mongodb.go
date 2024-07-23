@@ -8,38 +8,56 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type userRepository struct {
+type UserRepository struct {
 	collection *mongo.Collection
 }
 
 // * constructor
-func NewUserRepository(repo mongoRepository) (*userRepository, error) {
+func NewUserRepository(repo *MongoRepository) (*UserRepository, error) {
 	col, err := repo.Collection("users")
 	if err != nil {
 		return nil, err
 	}
 
-	return &userRepository{collection: col}, nil
+	return &UserRepository{collection: col}, nil
 }
 
-func (r *userRepository) Save(ctx context.Context, user *domain.User) error {
+func (r *UserRepository) Save(ctx context.Context, user *domain.User) error {
 	user.ID = primitive.NewObjectID().Hex()
-	_, err := r.collection.InsertOne(ctx, user)
+	data, err := bson.Marshal(user)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = r.collection.InsertOne(ctx, data)
 	return err
 }
 
-func (r *userRepository) Update(ctx context.Context, id string, updates interface{}) error {
+// func (r *userRepository) Update(ctx context.Context, id string, updates interface{}) error {
+func (r *UserRepository) Update(ctx context.Context, id string, user *domain.User) error {
+	data, err := bson.Marshal(user)
+
+	if err != nil {
+		return err
+	}
+
 	filter := bson.M{"_id": bson.M{"$eq": id}}
-	update := bson.M{"$set": updates}
+	update := bson.M{"$set": data}
 
-	_, err := r.collection.UpdateOne(ctx, filter, update)
+	updateResult := r.collection.FindOneAndUpdate(ctx, filter, update, options.FindOneAndUpdate().SetUpsert(true))
 
-	return err
+	if updateResult.Err() != nil {
+		return updateResult.Err()
+	}
+
+	return nil
 }
 
-func (r *userRepository) Delete(ctx context.Context, id string) error {
+func (r *UserRepository) Delete(ctx context.Context, id string) error {
 	filter := bson.M{"_id": bson.M{"$eq": id}}
 	result, err := r.collection.DeleteOne(ctx, filter)
 
@@ -54,7 +72,7 @@ func (r *userRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *userRepository) GetAll(ctx context.Context, search string) ([]domain.User, error) {
+func (r *UserRepository) GetAll(ctx context.Context, search string) ([]domain.User, error) {
 	filter := bson.M{}
 
 	if search != "" {
@@ -78,13 +96,6 @@ func (r *userRepository) GetAll(ctx context.Context, search string) ([]domain.Us
 	for {
 
 		isExist := cursor.Next(ctx)
-		// if err == mongo.ErrNoDocuments {
-		// 	break
-		// }
-
-		// if err != nil {
-		// 	return nil, err
-		// }
 
 		if !isExist {
 			break
@@ -103,13 +114,13 @@ func (r *userRepository) GetAll(ctx context.Context, search string) ([]domain.Us
 	return users, nil
 }
 
-func (r *userRepository) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
+func (r *UserRepository) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
 	filter := bson.M{"_id": bson.M{"$eq": id}}
 	var user domain.User
 	err := r.collection.FindOne(ctx, filter).Decode(&user)
 
 	if err == mongo.ErrNoDocuments {
-		return nil, nil
+		return nil, fmt.Errorf("user not found")
 	}
 
 	if err != nil {
